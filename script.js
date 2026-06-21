@@ -500,4 +500,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    /* ==========================================================================
+       GROUP COMPANIES PROFILE MODAL LOGIC
+       ========================================================================== */
+    const clickableCards = document.querySelectorAll('.group-card.clickable-card');
+    clickableCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const modalId = card.getAttribute('data-modal');
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        });
+    });
+
+    const profileModals = document.querySelectorAll('.profile-modal');
+    profileModals.forEach(modal => {
+        const closeBtn = modal.querySelector('.profile-modal-close');
+        const overlay = modal.querySelector('.profile-modal-overlay');
+
+        const closeModal = () => {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        };
+
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (overlay) overlay.addEventListener('click', closeModal);
+    });
+
 });
