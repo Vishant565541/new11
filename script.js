@@ -342,127 +342,162 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ==========================================================================
-       VIDEO GALLERY SLIDESHOW LOGIC
+       INTERACTIVE GALLERY GRID & LIGHTBOX LOGIC
        ========================================================================== */
-    const slideshowContainer = document.getElementById('video-slideshow');
-    if (slideshowContainer) {
-        const slides = slideshowContainer.querySelectorAll('.video-slide');
-        const dots = slideshowContainer.querySelectorAll('.dot');
-        const prevBtn = document.getElementById('prev-slide-btn');
-        const nextBtn = document.getElementById('next-slide-btn');
-        const muteToggleBtn = document.getElementById('mute-toggle-btn');
-        
-        let currentSlideIndex = 0;
-        let slideTimer = null;
-        let isMuted = true; // Default muted due to browser autoplay policies
+    const gallerySection = document.getElementById('gallery');
+    if (gallerySection) {
+        const filterBtns = gallerySection.querySelectorAll('.gallery-filter-btn');
+        const galleryItems = gallerySection.querySelectorAll('.gallery-item');
+        const lightboxModal = document.getElementById('lightbox-modal');
+        const lightboxContent = document.getElementById('lightbox-content');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+        const lightboxClose = document.getElementById('lightbox-close');
+        const lightboxPrev = document.getElementById('lightbox-prev');
+        const lightboxNext = document.getElementById('lightbox-next');
 
-        // Function to play current video and pause/reset others
-        const updateVideoPlayback = () => {
-            slides.forEach((slide, index) => {
-                const video = slide.querySelector('video');
-                if (!video) return;
+        let activeFilter = 'all';
+        let filteredItems = Array.from(galleryItems);
+        let currentItemIndex = 0;
 
-                if (index === currentSlideIndex) {
-                    video.muted = isMuted;
-                    // Play the active video
-                    const playPromise = video.play();
-                    if (playPromise !== undefined) {
-                        playPromise.catch(error => {
-                            console.log("Autoplay was prevented or video paused", error);
-                        });
+        // 1. Grid Filtering
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                activeFilter = btn.getAttribute('data-filter');
+                filteredItems = [];
+
+                galleryItems.forEach(item => {
+                    const itemType = item.getAttribute('data-type');
+                    if (activeFilter === 'all' || itemType === activeFilter) {
+                        item.classList.remove('hidden');
+                        filteredItems.push(item);
+                    } else {
+                        item.classList.add('hidden');
                     }
-                } else {
-                    // Pause and reset other videos
-                    video.pause();
-                    video.currentTime = 0;
-                }
-            });
-        };
-
-        // Go to specific slide index
-        const showSlide = (index) => {
-            // Remove active classes
-            slides[currentSlideIndex].classList.remove('active');
-            dots[currentSlideIndex].classList.remove('active');
-
-            // Set new index with wrapping bounds
-            currentSlideIndex = (index + slides.length) % slides.length;
-
-            // Add active classes
-            slides[currentSlideIndex].classList.add('active');
-            dots[currentSlideIndex].classList.add('active');
-
-            // Handle video playback
-            updateVideoPlayback();
-
-            // Reset auto-advance timer
-            resetTimer();
-        };
-
-        // Next slide
-        const nextSlide = () => {
-            showSlide(currentSlideIndex + 1);
-        };
-
-        // Prev slide
-        const prevSlide = () => {
-            showSlide(currentSlideIndex - 1);
-        };
-
-        // Timer control functions
-        const resetTimer = () => {
-            if (slideTimer) clearInterval(slideTimer);
-            slideTimer = setInterval(nextSlide, 5000); // 5 seconds interval
-        };
-
-        // Add event listeners
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                prevSlide();
-            });
-        }
-
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                nextSlide();
-            });
-        }
-
-        // Dots controls
-        dots.forEach((dot, index) => {
-            dot.addEventListener('click', () => {
-                showSlide(index);
+                });
             });
         });
 
-        // Mute / Unmute Control
-        if (muteToggleBtn) {
-            muteToggleBtn.addEventListener('click', () => {
-                isMuted = !isMuted;
-                
-                // Update active video muted state
-                const activeVideo = slides[currentSlideIndex].querySelector('video');
-                if (activeVideo) {
-                    activeVideo.muted = isMuted;
+        // 2. Auto-play Video Preview on Hover
+        const previewVideos = gallerySection.querySelectorAll('.gallery-video-preview');
+        previewVideos.forEach(video => {
+            const item = video.closest('.gallery-item');
+            item.addEventListener('mouseenter', () => {
+                video.muted = true;
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(() => {});
                 }
+            });
+            item.addEventListener('mouseleave', () => {
+                video.pause();
+                video.currentTime = 0;
+            });
+        });
 
-                // Update icon
-                const icon = muteToggleBtn.querySelector('i');
-                if (icon) {
-                    if (isMuted) {
-                        icon.className = 'fa-solid fa-volume-xmark';
-                        muteToggleBtn.setAttribute('aria-label', 'Unmute Video');
-                    } else {
-                        icon.className = 'fa-solid fa-volume-high';
-                        muteToggleBtn.setAttribute('aria-label', 'Mute Video');
-                    }
+        // 3. Lightbox Functionality
+        const openLightbox = (index) => {
+            currentItemIndex = index;
+            const activeItem = filteredItems[currentItemIndex];
+            if (!activeItem) return;
+
+            const mediaSrc = activeItem.getAttribute('data-src');
+            const mediaType = activeItem.getAttribute('data-type');
+            const labelText = activeItem.querySelector('.gallery-item-label').textContent;
+
+            lightboxContent.innerHTML = ''; // Clear previous content
+
+            if (mediaType === 'video') {
+                const videoEl = document.createElement('video');
+                videoEl.src = mediaSrc;
+                videoEl.controls = true;
+                videoEl.autoplay = true;
+                videoEl.loop = true;
+                videoEl.style.width = '100%';
+                videoEl.style.height = '100%';
+                lightboxContent.appendChild(videoEl);
+            } else {
+                const imgEl = document.createElement('img');
+                imgEl.src = mediaSrc;
+                imgEl.alt = labelText;
+                lightboxContent.appendChild(imgEl);
+            }
+
+            lightboxCaption.textContent = labelText;
+            lightboxModal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Stop page scroll
+        };
+
+        const closeLightbox = () => {
+            // Stop any playing video in lightbox
+            const videoEl = lightboxContent.querySelector('video');
+            if (videoEl) {
+                videoEl.pause();
+            }
+            lightboxModal.classList.remove('active');
+            document.body.style.overflow = ''; // Re-enable page scroll
+        };
+
+        const navigateLightbox = (direction) => {
+            if (filteredItems.length <= 1) return;
+            let nextIndex = currentItemIndex + direction;
+            if (nextIndex < 0) {
+                nextIndex = filteredItems.length - 1;
+            } else if (nextIndex >= filteredItems.length) {
+                nextIndex = 0;
+            }
+            openLightbox(nextIndex);
+        };
+
+        // Open Lightbox on item click
+        galleryItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const itemIndex = filteredItems.indexOf(item);
+                if (itemIndex !== -1) {
+                    openLightbox(itemIndex);
                 }
+            });
+        });
+
+        // Event Listeners for controls
+        if (lightboxClose) {
+            lightboxClose.addEventListener('click', closeLightbox);
+        }
+
+        if (lightboxPrev) {
+            lightboxPrev.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateLightbox(-1);
             });
         }
 
-        // Initialize slideshow
-        updateVideoPlayback();
-        resetTimer();
+        if (lightboxNext) {
+            lightboxNext.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateLightbox(1);
+            });
+        }
+
+        // Close when clicking modal backdrop
+        lightboxModal.addEventListener('click', (e) => {
+            if (e.target === lightboxModal || e.target === lightboxContent) {
+                closeLightbox();
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (!lightboxModal.classList.contains('active')) return;
+            if (e.key === 'Escape') {
+                closeLightbox();
+            } else if (e.key === 'ArrowLeft') {
+                navigateLightbox(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigateLightbox(1);
+            }
+        });
     }
 
 });
